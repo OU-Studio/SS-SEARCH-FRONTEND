@@ -1,16 +1,21 @@
 (function () {
   const API_URL = 'https://search-api-production-ff51.up.railway.app/api/search-lite';
   const DOMAIN = window.location.hostname;
+  const UNIQUE_ID = 'ss_' + Math.random().toString(36).slice(2);
 
   console.log('✅ Lite search script loaded');
-
-
 
   const searchHTML = `
     <div id="ss-search-wrapper" style="padding: 40px 0;">
       <h1>Search</h1>
       <input id="ss-search-input" type="text" placeholder="Search this site..."
         style="width: 100%; padding: 10px; font-size: 16px;" />
+      <div id="ss-search-progress" style="margin-top: 1em; display: none;">
+        <div style="height: 10px; background: #eee; width: 100%; border-radius: 5px; overflow: hidden;">
+          <div id="ss-progress-bar" style="height: 10px; background: #0070f3; width: 0%; transition: width 0.2s;"></div>
+        </div>
+        <p id="ss-progress-text" style="font-size: 14px; margin-top: 0.5em;"></p>
+      </div>
       <p id="status"></p>
       <div id="ss-search-results" style="margin-top: 20px; font-family: sans-serif;"></div>
     </div>
@@ -32,22 +37,49 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     waitForElement('.sqs-search-container', (container) => {
-  console.log('✅ Found .sqs-search-container');
-  container.parentElement.innerHTML = searchHTML;
-});
-
+      console.log('✅ Found .sqs-search-container');
+      container.parentElement.innerHTML = searchHTML;
+    });
   });
 
   function runSearch(query) {
     const resultsContainer = document.getElementById('ss-search-results');
+    const progressWrap = document.getElementById('ss-search-progress');
+    const progressBar = document.getElementById('ss-progress-bar');
+    const progressText = document.getElementById('ss-progress-text');
+
     resultsContainer.innerHTML = 'Searching...';
-console.log('🛰 Sending domain:', DOMAIN);
+    progressWrap.style.display = 'none';
+
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, domain: DOMAIN })
+      body: JSON.stringify({ query, domain: DOMAIN, id: UNIQUE_ID })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 404) {
+          // Start progress stream
+          progressWrap.style.display = 'block';
+          progressBar.style.width = '0%';
+          progressText.textContent = 'Preparing index...';
+
+          const source = new EventSource(`https://search-api-production-ff51.up.railway.app/api/progress/${UNIQUE_ID}`);
+          source.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const percent = Math.round((data.done / data.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressText.textContent = `Indexing ${data.done} of ${data.total} pages...`;
+
+            if (data.done === data.total) {
+              source.close();
+              // Retry search after a short delay
+              setTimeout(() => runSearch(query), 1000);
+            }
+          };
+          return Promise.reject('Index building');
+        }
+        return res.json();
+      })
       .then(data => {
         if (!data.results || data.results.length === 0) {
           resultsContainer.innerHTML = '<p>No results found.</p>';
@@ -64,10 +96,13 @@ console.log('🛰 Sending domain:', DOMAIN);
         `).join('');
 
         resultsContainer.innerHTML = html;
+        progressWrap.style.display = 'none';
       })
       .catch(err => {
-        console.error(err);
-        resultsContainer.innerHTML = '<p>Error searching site. Please try again later.</p>';
+        if (err !== 'Index building') {
+          console.error(err);
+          resultsContainer.innerHTML = '<p>Error searching site. Please try again later.</p>';
+        }
       });
   }
 
