@@ -25,9 +25,11 @@
 
       const searchHTML = `
 <div id="ss-search-wrapper" style="padding: 40px 0;">
-<h1>Search</h1>
+<div class="sqs-search-page-input">
+<div class="spinner-wrapper"></div>
 <input id="ss-search-input" type="text" placeholder="Search this site..."
 style="width: 100%; padding: 10px; font-size: 16px;" />
+</div>
 <div id="ss-search-progress" style="margin-top: 1em; display: none;">
 <div style="height: 10px; background: #eee; width: 100%; border-radius: 5px; overflow: hidden;">
 <div id="ss-progress-bar" style="height: 10px; background: #0070f3; width: 0%; transition: width 0.2s;"></div>
