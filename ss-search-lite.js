@@ -44,13 +44,17 @@
 
   let indexingInProgress = false;
 
+let indexingInProgress = false;
+let indexFinished = false;
+
 function runSearch(query) {
   if (indexingInProgress) {
-    console.log('⏳ Indexing already in progress, skipping this input');
+    console.log('⏳ Indexing already in progress, skipping input:', query);
     return;
   }
 
   indexingInProgress = true;
+  indexFinished = false;
 
   const resultsContainer = document.getElementById('ss-search-results');
   const progressWrap = document.getElementById('ss-search-progress');
@@ -60,7 +64,7 @@ function runSearch(query) {
   resultsContainer.innerHTML = 'Searching...';
   progressWrap.style.display = 'block';
   progressBar.style.width = '0%';
-  progressText.textContent = 'Preparing...';
+  progressText.textContent = 'Checking cache...';
 
   const source = new EventSource(`https://search-api-production-ff51.up.railway.app/api/progress/${UNIQUE_ID}`);
   source.onmessage = (event) => {
@@ -69,14 +73,15 @@ function runSearch(query) {
     progressBar.style.width = percent + '%';
     progressText.textContent = `Indexing ${data.done} of ${data.total} pages...`;
 
-    if (data.done === data.total) {
+    if (data.done === data.total && !indexFinished) {
+      indexFinished = true;
       source.close();
       indexingInProgress = false;
 
       const currentQuery = document.getElementById('ss-search-input')?.value.trim();
       if (currentQuery && currentQuery.length >= 3) {
         console.log('🔁 Re-running final search for:', currentQuery);
-        runSearch(currentQuery);
+        runSearch(currentQuery); // <- this time it won't be blocked
       }
     }
   };
@@ -88,9 +93,11 @@ function runSearch(query) {
   })
     .then(res => res.json())
     .then(data => {
-      source.close();
-      indexingInProgress = false;
-      progressWrap.style.display = 'none';
+      if (!indexFinished) {
+        source.close();
+        indexingInProgress = false;
+        progressWrap.style.display = 'none';
+      }
 
       if (!data.results || data.results.length === 0) {
         resultsContainer.innerHTML = '<p>No results found.</p>';
@@ -107,6 +114,7 @@ function runSearch(query) {
       `).join('');
 
       resultsContainer.innerHTML = html;
+      progressWrap.style.display = 'none';
     })
     .catch(err => {
       source.close();
@@ -116,6 +124,7 @@ function runSearch(query) {
       progressWrap.style.display = 'none';
     });
 }
+
 
 
   document.addEventListener('input', function (e) {
