@@ -71,10 +71,17 @@
             progressText.textContent = `Indexing ${data.done} of ${data.total} pages...`;
 
             if (data.done === data.total) {
-              source.close();
-              // Retry search after a short delay
-              setTimeout(() => runSearch(query), 1000);
-            }
+  source.close();
+  indexingInProgress = false;
+
+  // Grab latest input value
+  const currentQuery = document.getElementById('ss-search-input')?.value.trim();
+  if (currentQuery && currentQuery.length >= 3) {
+    console.log('🔁 Re-running final search for:', currentQuery);
+    runSearch(currentQuery);
+  }
+}
+
           };
           return Promise.reject('Index building');
         }
