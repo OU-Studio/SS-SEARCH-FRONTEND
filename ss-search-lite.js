@@ -36,7 +36,7 @@
   function runSearch(query) {
     const resultsContainer = document.getElementById('ss-search-results');
     resultsContainer.innerHTML = 'Searching...';
-
+console.log('🛰 Sending domain:', DOMAIN);
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
