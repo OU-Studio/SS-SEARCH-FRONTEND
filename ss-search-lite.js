@@ -2,6 +2,9 @@
   const API_URL = 'https://search-api-production-ff51.up.railway.app/api/search-lite';
   const DOMAIN = window.location.hostname;
 
+  console.log('✅ Lite search script loaded');
+
+
 
   const searchHTML = `
     <div id="ss-search-wrapper" style="padding: 40px 0;">
@@ -29,8 +32,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     waitForElement('.sqs-search-container', (container) => {
-      container.parentElement.innerHTML = searchHTML;
-    });
+  console.log('✅ Found .sqs-search-container');
+  container.parentElement.innerHTML = searchHTML;
+});
+
   });
 
   function runSearch(query) {
