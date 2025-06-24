@@ -1,6 +1,7 @@
 (function () {
   const API_URL = 'https://search-api-production-ff51.up.railway.app/api/search-lite';
-  const DOMAIN = window.location.origin;
+  const DOMAIN = window.location.hostname;
+
 
   const searchHTML = `
     <div id="ss-search-wrapper" style="padding: 40px 0;">
