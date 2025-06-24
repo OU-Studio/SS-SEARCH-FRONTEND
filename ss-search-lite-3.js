@@ -24,11 +24,11 @@
       console.log('✅ Lite search script loaded');
 
       const searchHTML = `
-<div id="ss-search-wrapper" style="padding: 40px 0;">
+<div id="ss-search-wrapper">
 <div class="sqs-search-page-input">
 <div class="spinner-wrapper"></div>
 <input id="ss-search-input" type="text" placeholder="Search this site..."
-style="width: 100%; padding: 10px; font-size: 16px;" />
+style="width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box;" />
 </div>
 <div id="ss-search-progress" style="margin-top: 1em; display: none;">
 <div style="height: 10px; background: #eee; width: 100%; border-radius: 5px; overflow: hidden;">
