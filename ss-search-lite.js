@@ -42,76 +42,81 @@
     });
   });
 
-  function runSearch(query) {
-    const resultsContainer = document.getElementById('ss-search-results');
-    const progressWrap = document.getElementById('ss-search-progress');
-    const progressBar = document.getElementById('ss-progress-bar');
-    const progressText = document.getElementById('ss-progress-text');
+  let indexingInProgress = false;
 
-    resultsContainer.innerHTML = 'Searching...';
-    progressWrap.style.display = 'none';
-
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, domain: DOMAIN, id: UNIQUE_ID })
-    })
-      .then(res => {
-        if (res.status === 404) {
-          // Start progress stream
-          progressWrap.style.display = 'block';
-          progressBar.style.width = '0%';
-          progressText.textContent = 'Preparing index...';
-
-          const source = new EventSource(`https://search-api-production-ff51.up.railway.app/api/progress/${UNIQUE_ID}`);
-          source.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const percent = Math.round((data.done / data.total) * 100);
-            progressBar.style.width = percent + '%';
-            progressText.textContent = `Indexing ${data.done} of ${data.total} pages...`;
-
-            if (data.done === data.total) {
-  source.close();
-  indexingInProgress = false;
-
-  // Grab latest input value
-  const currentQuery = document.getElementById('ss-search-input')?.value.trim();
-  if (currentQuery && currentQuery.length >= 3) {
-    console.log('🔁 Re-running final search for:', currentQuery);
-    runSearch(currentQuery);
+function runSearch(query) {
+  if (indexingInProgress) {
+    console.log('⏳ Indexing already in progress, skipping this input');
+    return;
   }
+
+  indexingInProgress = true;
+
+  const resultsContainer = document.getElementById('ss-search-results');
+  const progressWrap = document.getElementById('ss-search-progress');
+  const progressBar = document.getElementById('ss-progress-bar');
+  const progressText = document.getElementById('ss-progress-text');
+
+  resultsContainer.innerHTML = 'Searching...';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressText.textContent = 'Preparing...';
+
+  const source = new EventSource(`https://search-api-production-ff51.up.railway.app/api/progress/${UNIQUE_ID}`);
+  source.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const percent = Math.round((data.done / data.total) * 100);
+    progressBar.style.width = percent + '%';
+    progressText.textContent = `Indexing ${data.done} of ${data.total} pages...`;
+
+    if (data.done === data.total) {
+      source.close();
+      indexingInProgress = false;
+
+      const currentQuery = document.getElementById('ss-search-input')?.value.trim();
+      if (currentQuery && currentQuery.length >= 3) {
+        console.log('🔁 Re-running final search for:', currentQuery);
+        runSearch(currentQuery);
+      }
+    }
+  };
+
+  fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, domain: DOMAIN, id: UNIQUE_ID })
+  })
+    .then(res => res.json())
+    .then(data => {
+      source.close();
+      indexingInProgress = false;
+      progressWrap.style.display = 'none';
+
+      if (!data.results || data.results.length === 0) {
+        resultsContainer.innerHTML = '<p>No results found.</p>';
+        return;
+      }
+
+      const html = data.results.map(item => `
+        <div class="result result-${item.type}" style="margin-bottom: 20px;">
+          <a href="${item.url}" target="_blank" style="font-weight: bold; text-decoration: underline;">
+            ${item.title}
+          </a>
+          <p style="margin: 5px 0;">${item.snippet}</p>
+        </div>
+      `).join('');
+
+      resultsContainer.innerHTML = html;
+    })
+    .catch(err => {
+      source.close();
+      indexingInProgress = false;
+      console.error(err);
+      resultsContainer.innerHTML = '<p>Error searching site. Please try again later.</p>';
+      progressWrap.style.display = 'none';
+    });
 }
 
-          };
-          return Promise.reject('Index building');
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (!data.results || data.results.length === 0) {
-          resultsContainer.innerHTML = '<p>No results found.</p>';
-          return;
-        }
-
-        const html = data.results.map(item => `
-          <div class="result result-${item.type}" style="margin-bottom: 20px;">
-            <a href="${item.url}" target="_blank" style="font-weight: bold; text-decoration: underline;">
-              ${item.title}
-            </a>
-            <p style="margin: 5px 0;">${item.snippet}</p>
-          </div>
-        `).join('');
-
-        resultsContainer.innerHTML = html;
-        progressWrap.style.display = 'none';
-      })
-      .catch(err => {
-        if (err !== 'Index building') {
-          console.error(err);
-          resultsContainer.innerHTML = '<p>Error searching site. Please try again later.</p>';
-        }
-      });
-  }
 
   document.addEventListener('input', function (e) {
     if (e.target && e.target.id === 'ss-search-input') {
