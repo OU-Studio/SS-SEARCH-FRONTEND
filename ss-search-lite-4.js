@@ -23,6 +23,13 @@
 
     console.log('✅ Lite search script loaded');
 
+    // Inject custom CSS to hide default Squarespace search container
+const styleTag = document.createElement('style');
+styleTag.textContent = `.sqs-search-container { opacity: 0 !important; }`;
+document.head.appendChild(styleTag);
+console.log('🎨 Custom CSS injected to hide .sqs-search-container');
+
+
     const searchHTML = `
 <div id="ss-search-wrapper">
 <div class="sqs-search-page-input">
